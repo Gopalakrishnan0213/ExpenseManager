@@ -134,10 +134,11 @@ button {
 }
 
 .screen {
-  min-height: 730px;
+  height: 730px;
   padding: 18px;
   border-radius: 30px 30px 0 0;
   background: #f7f9fc;
+  overflow-y: auto;
 }
 
 .screen-header {
@@ -263,6 +264,16 @@ button {
   font-weight: 800;
 }
 
+.pill.paid {
+  background: #dcfce7;
+  color: var(--success);
+}
+
+.pill.pending {
+  background: #fff8e6;
+  color: var(--warning);
+}
+
 .transaction-row {
   padding: 12px 0;
   border-bottom: 1px solid var(--line);
@@ -297,6 +308,13 @@ button {
   margin: 3px 0 0;
   color: var(--muted);
   font-size: 0.78rem;
+}
+
+.amount-cell {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+  text-align: right;
 }
 
 .button {
@@ -382,6 +400,66 @@ button {
   border-radius: 16px;
   background: #fff;
   color: var(--ink);
+}
+
+.filter-section {
+  display: grid;
+  gap: 8px;
+}
+
+.filter-title {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.filter-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 3px;
+}
+
+.filter-chip {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.filter-chip.active {
+  border-color: var(--primary);
+  background: #eaf0ff;
+  color: var(--primary);
+}
+
+.list-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.list-summary div {
+  display: grid;
+  gap: 3px;
+}
+
+.empty-state {
+  padding: 26px 12px;
+  border-radius: 18px;
+  background: var(--soft);
+  color: var(--muted);
+  text-align: center;
+  font-weight: 800;
 }
 
 .qr-box {
@@ -506,6 +584,6 @@ button {
   }
 
   .screen {
-    min-height: 670px;
+    height: 670px;
   }
 }

@@ -12,6 +12,13 @@ const defaultTransaction = {
 const state = {
   screen: "home",
   transaction: { ...defaultTransaction },
+  filters: {
+    category: "All",
+    app: "All",
+    date: "All",
+    status: "All",
+    search: "",
+  },
   transactions: [
     {
       merchant: "DMart",
@@ -19,6 +26,9 @@ const state = {
       amount: 850,
       app: "GPay",
       time: "Today, 10:15 AM",
+      date: "Today",
+      status: "Paid",
+      note: "Monthly grocery",
     },
     {
       merchant: "Zomato",
@@ -26,6 +36,9 @@ const state = {
       amount: 320,
       app: "BHIM",
       time: "Yesterday",
+      date: "This Week",
+      status: "Paid",
+      note: "Dinner order",
     },
     {
       merchant: "Electricity Board",
@@ -33,6 +46,39 @@ const state = {
       amount: 1200,
       app: "PhonePe",
       time: "21 Jun",
+      date: "This Month",
+      status: "Paid",
+      note: "Electricity bill",
+    },
+    {
+      merchant: "Apollo Pharmacy",
+      category: "Medical",
+      amount: 460,
+      app: "GPay",
+      time: "18 Jun",
+      date: "This Month",
+      status: "Paid",
+      note: "Medicines",
+    },
+    {
+      merchant: "PVR Cinemas",
+      category: "Entertainment",
+      amount: 780,
+      app: "Paytm",
+      time: "12 Jun",
+      date: "This Month",
+      status: "Paid",
+      note: "Movie tickets",
+    },
+    {
+      merchant: "Reliance Fresh",
+      category: "Grocery",
+      amount: 640,
+      app: "BHIM",
+      time: "Draft",
+      date: "Today",
+      status: "Pending",
+      note: "Payment opened but not confirmed",
     },
   ],
 };
@@ -82,6 +128,9 @@ function saveTransaction(status = "Paid") {
         amount,
         app: draft.paymentApp,
         time: "Just now",
+        date: "Today",
+        status: "Paid",
+        note: draft.note || draft.category,
       },
       ...state.transactions,
     ];
@@ -108,7 +157,9 @@ function header(title, subtitle, showBack = true) {
 }
 
 function homeScreen() {
-  const total = state.transactions.reduce((sum, item) => sum + item.amount, 0);
+  const total = state.transactions
+    .filter((item) => item.status === "Paid")
+    .reduce((sum, item) => sum + item.amount, 0);
 
   return `
     ${header("HEMS", "Track expense before payment", false)}
@@ -170,8 +221,12 @@ function transactionRow(item) {
       <div class="grow">
         <p class="row-title">${item.merchant}</p>
         <p class="row-subtitle">${item.category} via ${item.app} - ${item.time}</p>
+        <p class="row-subtitle">${item.note || ""}</p>
       </div>
-      <strong>${money(item.amount)}</strong>
+      <div class="amount-cell">
+        <strong>${money(item.amount)}</strong>
+        <span class="pill ${item.status === "Paid" ? "paid" : "pending"}">${item.status}</span>
+      </div>
     </div>
   `;
 }
@@ -402,18 +457,98 @@ function cancelledScreen() {
 }
 
 function transactionsScreen() {
+  const filteredTransactions = getFilteredTransactions();
+  const total = filteredTransactions.reduce((sum, item) => sum + item.amount, 0);
+
   return `
-    ${header("Transactions", "All tracked payments")}
+    ${header("Transactions", "Search and filter tracked payments")}
+
+    <section class="card stack">
+      <div class="field">
+        <label for="transactionSearch">Search merchant or note</label>
+        <input
+          id="transactionSearch"
+          type="search"
+          value="${state.filters.search}"
+          placeholder="Example: DMart, grocery, bill"
+          data-filter-input="search"
+        />
+      </div>
+
+      ${filterSection("Category", "category", ["All", "Grocery", "Food", "Bills", "Medical", "Entertainment"])}
+      ${filterSection("Payment app", "app", ["All", "GPay", "BHIM", "PhonePe", "Paytm"])}
+      ${filterSection("Date", "date", ["All", "Today", "This Week", "This Month"])}
+      ${filterSection("Status", "status", ["All", "Paid", "Pending"])}
+
+      <button class="button secondary" type="button" data-action="clear-filters">Clear Filters</button>
+    </section>
 
     <section class="card">
+      <div class="list-summary">
+        <div>
+          <span class="muted">Showing</span>
+          <strong>${filteredTransactions.length} transaction${filteredTransactions.length === 1 ? "" : "s"}</strong>
+        </div>
+        <div>
+          <span class="muted">Total</span>
+          <strong>${money(total)}</strong>
+        </div>
+      </div>
       <div class="transaction-list">
-        ${state.transactions.map(transactionRow).join("")}
+        ${
+          filteredTransactions.length
+            ? filteredTransactions.map(transactionRow).join("")
+            : `<div class="empty-state">No transactions match these filters.</div>`
+        }
       </div>
     </section>
 
     <div class="bottom-actions">
       <button class="button" type="button" data-action="pay-again">New Payment</button>
       <button class="button secondary" type="button" data-screen="home">Go Home</button>
+    </div>
+  `;
+}
+
+function getFilteredTransactions() {
+  const search = state.filters.search.trim().toLowerCase();
+
+  return state.transactions.filter((item) => {
+    const matchesCategory =
+      state.filters.category === "All" || item.category === state.filters.category;
+    const matchesApp = state.filters.app === "All" || item.app === state.filters.app;
+    const matchesDate = state.filters.date === "All" || item.date === state.filters.date;
+    const matchesStatus =
+      state.filters.status === "All" || item.status === state.filters.status;
+    const matchesSearch =
+      !search ||
+      item.merchant.toLowerCase().includes(search) ||
+      (item.note || "").toLowerCase().includes(search);
+
+    return matchesCategory && matchesApp && matchesDate && matchesStatus && matchesSearch;
+  });
+}
+
+function filterSection(title, type, options) {
+  return `
+    <div class="filter-section">
+      <p class="filter-title">${title}</p>
+      <div class="filter-chips">
+        ${options
+          .map(
+            (option) => `
+              <button
+                class="filter-chip ${state.filters[type] === option ? "active" : ""}"
+                type="button"
+                data-filter-type="${type}"
+                data-filter-value="${option}"
+              >
+                ${option}
+              </button>
+            `,
+          )
+          .join("")}
+      </div>
     </div>
   `;
 }
@@ -470,8 +605,27 @@ app.addEventListener("click", (event) => {
     return;
   }
 
+  if (target.dataset.filterType) {
+    state.filters = {
+      ...state.filters,
+      [target.dataset.filterType]: target.dataset.filterValue,
+    };
+    render();
+    return;
+  }
+
   const actions = {
     back: () => setScreen("home"),
+    "clear-filters": () => {
+      state.filters = {
+        category: "All",
+        app: "All",
+        date: "All",
+        status: "All",
+        search: "",
+      };
+      render();
+    },
     "manual-upi": () =>
       updateTransaction({
         merchant: "",
@@ -502,6 +656,23 @@ app.addEventListener("click", (event) => {
 });
 
 app.addEventListener("input", (event) => {
+  const filterInput = event.target.dataset.filterInput;
+
+  if (filterInput) {
+    state.filters = {
+      ...state.filters,
+      [filterInput]: event.target.value,
+    };
+    render();
+
+    const updatedInput = app.querySelector(`[data-filter-input="${filterInput}"]`);
+    if (updatedInput) {
+      updatedInput.focus();
+      updatedInput.setSelectionRange(event.target.value.length, event.target.value.length);
+    }
+    return;
+  }
+
   const inputName = event.target.dataset.input;
 
   if (!inputName) {

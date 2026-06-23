@@ -41,7 +41,7 @@ http://localhost:8000
 - Payment app simulation
 - Payment result confirmation
 - Saved transaction
-- Transactions list
+- Transactions list with search and filters
 
 ## Notes
 
