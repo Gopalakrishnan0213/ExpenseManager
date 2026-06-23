@@ -31,6 +31,11 @@ Then open:
 http://localhost:8000
 ```
 
+## Full mobile app prompt
+
+Use `CURSOR_WINDOWS_FULL_APP_PROMPT.md` as the prompt in Cursor on Windows when
+you are ready to generate the full React Native mobile app from this prototype.
+
 ## Prototype screens
 
 - Home dashboard
