@@ -42,6 +42,13 @@ http://localhost:8000
 - Payment result confirmation
 - Saved transaction
 - Transactions list with search and filters
+- Transaction detail
+- Reports and analytics
+- Category management
+- Budgets
+- Manual expense entry
+- Import statement mock
+- Settings
 
 ## Notes
 

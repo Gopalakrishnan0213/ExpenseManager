@@ -12,6 +12,14 @@ const defaultTransaction = {
 const state = {
   screen: "home",
   transaction: { ...defaultTransaction },
+  selectedTransactionId: "txn-1",
+  manualExpense: {
+    merchant: "Cash Vegetable Shop",
+    amount: "250",
+    category: "Grocery",
+    paymentMethod: "Cash",
+    note: "Vegetables from market",
+  },
   filters: {
     category: "All",
     app: "All",
@@ -21,6 +29,7 @@ const state = {
   },
   transactions: [
     {
+      id: "txn-1",
       merchant: "DMart",
       category: "Grocery",
       amount: 850,
@@ -31,6 +40,7 @@ const state = {
       note: "Monthly grocery",
     },
     {
+      id: "txn-2",
       merchant: "Zomato",
       category: "Food",
       amount: 320,
@@ -41,6 +51,7 @@ const state = {
       note: "Dinner order",
     },
     {
+      id: "txn-3",
       merchant: "Electricity Board",
       category: "Bills",
       amount: 1200,
@@ -51,6 +62,7 @@ const state = {
       note: "Electricity bill",
     },
     {
+      id: "txn-4",
       merchant: "Apollo Pharmacy",
       category: "Medical",
       amount: 460,
@@ -61,6 +73,7 @@ const state = {
       note: "Medicines",
     },
     {
+      id: "txn-5",
       merchant: "PVR Cinemas",
       category: "Entertainment",
       amount: 780,
@@ -71,6 +84,7 @@ const state = {
       note: "Movie tickets",
     },
     {
+      id: "txn-6",
       merchant: "Reliance Fresh",
       category: "Grocery",
       amount: 640,
@@ -95,6 +109,13 @@ const categories = [
 ];
 
 const paymentApps = ["GPay", "BHIM", "PhonePe", "Paytm"];
+const manualPaymentMethods = ["Cash", "Card", "Bank Transfer", "UPI Outside HEMS"];
+const budgetTargets = [
+  { category: "Grocery", limit: 8000 },
+  { category: "Food", limit: 5000 },
+  { category: "Bills", limit: 6000 },
+  { category: "Entertainment", limit: 2500 },
+];
 const app = document.querySelector("#app");
 
 function money(value) {
@@ -123,6 +144,7 @@ function saveTransaction(status = "Paid") {
   if (status === "Paid" && amount > 0) {
     state.transactions = [
       {
+        id: `txn-${Date.now()}`,
         merchant: draft.merchant || "UPI payment",
         category: draft.category,
         amount,
@@ -196,10 +218,31 @@ function homeScreen() {
       </div>
     </section>
 
+    <section class="card">
+      <h3 class="card-title">Prototype screens</h3>
+      <div class="quick-grid">
+        ${quickAction("Reports", "Charts and insights", "reports")}
+        ${quickAction("Budgets", "Monthly limits", "budgets")}
+        ${quickAction("Categories", "Manage groups", "categories-management")}
+        ${quickAction("Manual Expense", "Cash or missed payment", "manual-expense")}
+        ${quickAction("Import", "Statement upload mock", "import-statement")}
+        ${quickAction("Settings", "App preferences", "settings")}
+      </div>
+    </section>
+
     <div class="bottom-actions">
       <button class="button" type="button" data-screen="category">Pay Now</button>
       <button class="button secondary" type="button" data-screen="transactions">View Transactions</button>
     </div>
+  `;
+}
+
+function quickAction(title, subtitle, screen) {
+  return `
+    <button class="quick-action" type="button" data-screen="${screen}">
+      <strong>${title}</strong>
+      <span>${subtitle}</span>
+    </button>
   `;
 }
 
@@ -212,11 +255,15 @@ function summaryRow(label, amount) {
   `;
 }
 
-function transactionRow(item) {
+function transactionRow(item, interactive = true) {
   const icon = item.category.slice(0, 2);
+  const tag = interactive ? "button" : "div";
+  const attributes = interactive
+    ? `class="transaction-row transaction-button" type="button" data-transaction-id="${item.id}"`
+    : `class="transaction-row"`;
 
   return `
-    <div class="transaction-row">
+    <${tag} ${attributes}>
       <div class="avatar">${icon}</div>
       <div class="grow">
         <p class="row-title">${item.merchant}</p>
@@ -227,7 +274,7 @@ function transactionRow(item) {
         <strong>${money(item.amount)}</strong>
         <span class="pill ${item.status === "Paid" ? "paid" : "pending"}">${item.status}</span>
       </div>
-    </div>
+    </${tag}>
   `;
 }
 
@@ -553,6 +600,420 @@ function filterSection(title, type, options) {
   `;
 }
 
+function reportsScreen() {
+  const paidTransactions = getPaidTransactions();
+  const total = paidTransactions.reduce((sum, item) => sum + item.amount, 0);
+  const categoryTotals = getCategoryTotals(paidTransactions);
+  const appTotals = getTotalsByKey(paidTransactions, "app");
+  const largestCategory = categoryTotals[0] || { label: "None", amount: 0 };
+
+  return `
+    ${header("Reports", "Monthly spending insights")}
+
+    <section class="card summary-card">
+      <span class="label">June total spend</span>
+      <p class="amount">${money(total)}</p>
+      <div class="split">
+        <div>
+          <span class="label">Top category</span>
+          <strong>${largestCategory.label}</strong>
+        </div>
+        <div>
+          <span class="label">Tracked payments</span>
+          <strong>${paidTransactions.length}</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3 class="card-title">Category-wise spending</h3>
+      <div class="bar-list">
+        ${categoryTotals.map((item) => reportBar(item.label, item.amount, total)).join("")}
+      </div>
+    </section>
+
+    <section class="card">
+      <h3 class="card-title">Payment app-wise spending</h3>
+      <div class="bar-list">
+        ${appTotals.map((item) => reportBar(item.label, item.amount, total)).join("")}
+      </div>
+    </section>
+
+    <section class="card">
+      <h3 class="card-title">Month comparison</h3>
+      <div class="comparison-grid">
+        ${metricBox("This month", money(total))}
+        ${metricBox("Last month", money(9500))}
+        ${metricBox("Difference", "- " + money(1890))}
+        ${metricBox("Trend", "16% lower")}
+      </div>
+    </section>
+
+    <div class="bottom-actions">
+      <button class="button" type="button" data-screen="transactions">Open Transactions</button>
+      <button class="button secondary" type="button" data-screen="home">Go Home</button>
+    </div>
+  `;
+}
+
+function budgetsScreen() {
+  const categoryTotals = getCategoryTotals(getPaidTransactions());
+
+  return `
+    ${header("Budgets", "Track monthly limits")}
+
+    <section class="card summary-card">
+      <span class="label">Monthly budget</span>
+      <p class="amount">${money(22000)}</p>
+      <div class="split">
+        <div>
+          <span class="label">Spent</span>
+          <strong>${money(getPaidTransactions().reduce((sum, item) => sum + item.amount, 0))}</strong>
+        </div>
+        <div>
+          <span class="label">Remaining</span>
+          <strong>${money(14390)}</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3 class="card-title">Category budgets</h3>
+      <div class="budget-list">
+        ${budgetTargets
+          .map((budget) => {
+            const spent = categoryTotals.find((item) => item.label === budget.category)?.amount || 0;
+            return budgetRow(budget.category, spent, budget.limit);
+          })
+          .join("")}
+      </div>
+    </section>
+
+    <section class="card stack">
+      <h3 class="card-title">Budget alerts</h3>
+      <div class="notice">
+        HEMS can warn when a category reaches 80% of the monthly limit, before you make another payment.
+      </div>
+      <button class="button secondary" type="button">Add Category Budget</button>
+    </section>
+  `;
+}
+
+function categoriesManagementScreen() {
+  return `
+    ${header("Categories", "Manage category names, icons, and rules")}
+
+    <section class="card">
+      <h3 class="card-title">Default categories</h3>
+      <div class="category-list">
+        ${categories
+          .map(
+            (category) => `
+              <div class="category-row">
+                <div class="row-inline">
+                  <span class="avatar">${category.icon}</span>
+                  <div>
+                    <p class="row-title">${category.name}</p>
+                    <p class="row-subtitle">${category.sample}</p>
+                  </div>
+                </div>
+                <button class="mini-button" type="button">Edit</button>
+              </div>
+            `,
+          )
+          .join("")}
+      </div>
+    </section>
+
+    <section class="card stack">
+      <h3 class="card-title">Add category</h3>
+      ${readonlyField("Category name", "House Rent")}
+      ${readonlyField("Icon short code", "Re")}
+      <button class="button secondary" type="button">Preview Add Category</button>
+    </section>
+
+    <section class="card">
+      <h3 class="card-title">Auto rules preview</h3>
+      <div class="rule-list">
+        ${ruleRow("If note has DMart or BigBasket", "Grocery")}
+        ${ruleRow("If note has Zomato or Swiggy", "Food")}
+        ${ruleRow("If note has Netflix or PVR", "Entertainment")}
+      </div>
+    </section>
+  `;
+}
+
+function settingsScreen() {
+  return `
+    ${header("Settings", "Control app behavior")}
+
+    <section class="card">
+      <h3 class="card-title">Payment preferences</h3>
+      <div class="detail-card">
+        ${settingRow("Default payment app", "GPay", "Selected")}
+        ${settingRow("Currency", "INR", "Active")}
+        ${settingRow("Ask confirmation after return", "On", "On")}
+      </div>
+    </section>
+
+    <section class="card">
+      <h3 class="card-title">Privacy and data</h3>
+      <div class="detail-card">
+        ${settingRow("App lock", "Fingerprint / PIN", "On")}
+        ${settingRow("Local backup", "Enabled", "On")}
+        ${settingRow("Cloud sync", "Future option", "Later")}
+      </div>
+    </section>
+
+    <section class="card stack">
+      <h3 class="card-title">Export</h3>
+      <button class="button secondary" type="button">Export CSV</button>
+      <button class="button secondary" type="button">Export PDF Report</button>
+      <button class="button ghost" type="button">Reset Demo Data</button>
+    </section>
+  `;
+}
+
+function transactionDetailScreen() {
+  const item =
+    state.transactions.find((transaction) => transaction.id === state.selectedTransactionId) ||
+    state.transactions[0];
+
+  return `
+    ${header("Transaction Detail", "View and correct one expense")}
+
+    <section class="card summary-card">
+      <span class="label">${item.status}</span>
+      <p class="amount">${money(item.amount)}</p>
+      <p>${item.merchant}</p>
+    </section>
+
+    <section class="card detail-card">
+      ${detailRow("Category", item.category)}
+      ${detailRow("Payment method", item.app)}
+      ${detailRow("Date", item.time)}
+      ${detailRow("Status", item.status)}
+      ${detailRow("Note", item.note || "-")}
+      ${detailRow("Transaction ID", item.id.toUpperCase())}
+    </section>
+
+    <section class="card stack">
+      <button class="button secondary" type="button" data-screen="categories-management">Edit Category</button>
+      ${
+        item.status === "Pending"
+          ? `<button class="button success" type="button" data-action="mark-selected-paid">Mark as Paid</button>`
+          : ""
+      }
+      <button class="button ghost" type="button" data-screen="transactions">Back to Transactions</button>
+    </section>
+  `;
+}
+
+function manualExpenseScreen() {
+  const draft = state.manualExpense;
+
+  return `
+    ${header("Manual Expense", "For cash or missed transactions")}
+
+    <section class="card stack">
+      ${manualInputField("merchant", "Merchant / reason", draft.merchant)}
+      ${manualInputField("amount", "Amount", draft.amount, "number")}
+      ${manualInputField("note", "Note", draft.note)}
+    </section>
+
+    <section class="card">
+      <h3 class="card-title">Category</h3>
+      <div class="filter-chips wrap">
+        ${categories
+          .map(
+            (category) => `
+              <button
+                class="filter-chip ${draft.category === category.name ? "active" : ""}"
+                type="button"
+                data-manual-category="${category.name}"
+              >
+                ${category.name}
+              </button>
+            `,
+          )
+          .join("")}
+      </div>
+    </section>
+
+    <section class="card">
+      <h3 class="card-title">Payment method</h3>
+      <div class="filter-chips wrap">
+        ${manualPaymentMethods
+          .map(
+            (method) => `
+              <button
+                class="filter-chip ${draft.paymentMethod === method ? "active" : ""}"
+                type="button"
+                data-manual-method="${method}"
+              >
+                ${method}
+              </button>
+            `,
+          )
+          .join("")}
+      </div>
+    </section>
+
+    <div class="bottom-actions">
+      <button class="button success" type="button" data-action="save-manual-expense">Save Manual Expense</button>
+      <button class="button secondary" type="button" data-screen="home">Go Home</button>
+    </div>
+  `;
+}
+
+function importStatementScreen() {
+  return `
+    ${header("Import Statement", "Future fallback for CSV or UPI history")}
+
+    <section class="card upload-card">
+      <div class="upload-icon">CSV</div>
+      <h3>Upload bank or UPI statement</h3>
+      <p class="muted">
+        This screen is for cases where payments were not started from HEMS.
+      </p>
+      <button class="button secondary" type="button">Choose File</button>
+    </section>
+
+    <section class="card">
+      <h3 class="card-title">Detected preview</h3>
+      <div class="transaction-list">
+        ${transactionRow({
+          id: "import-1",
+          merchant: "Swiggy",
+          category: "Food",
+          amount: 410,
+          app: "UPI",
+          time: "Imported",
+          status: "Pending",
+          note: "Auto category suggestion",
+        }, false)}
+        ${transactionRow({
+          id: "import-2",
+          merchant: "Metro Recharge",
+          category: "Travel",
+          amount: 200,
+          app: "UPI",
+          time: "Imported",
+          status: "Pending",
+          note: "Needs review before saving",
+        }, false)}
+      </div>
+    </section>
+
+    <section class="card stack">
+      <button class="button" type="button">Review and Import</button>
+      <button class="button secondary" type="button" data-screen="transactions">Open Transactions</button>
+    </section>
+  `;
+}
+
+function getPaidTransactions() {
+  return state.transactions.filter((item) => item.status === "Paid");
+}
+
+function getCategoryTotals(transactions) {
+  return getTotalsByKey(transactions, "category");
+}
+
+function getTotalsByKey(transactions, key) {
+  const totals = transactions.reduce((acc, item) => {
+    acc[item[key]] = (acc[item[key]] || 0) + item.amount;
+    return acc;
+  }, {});
+
+  return Object.entries(totals)
+    .map(([label, amount]) => ({ label, amount }))
+    .sort((a, b) => b.amount - a.amount);
+}
+
+function reportBar(label, amount, total) {
+  const percent = total > 0 ? Math.round((amount / total) * 100) : 0;
+
+  return `
+    <div class="bar-row">
+      <div class="category-row">
+        <strong>${label}</strong>
+        <span>${money(amount)}</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" style="--bar-width: ${percent}%"></div>
+      </div>
+      <span class="muted">${percent}% of spending</span>
+    </div>
+  `;
+}
+
+function budgetRow(category, spent, limit) {
+  const percent = Math.min(Math.round((spent / limit) * 100), 100);
+  const remaining = Math.max(limit - spent, 0);
+
+  return `
+    <div class="budget-row">
+      <div class="category-row">
+        <strong>${category}</strong>
+        <span>${money(spent)} / ${money(limit)}</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill ${percent > 80 ? "warning-fill" : ""}" style="--bar-width: ${percent}%"></div>
+      </div>
+      <span class="muted">${money(remaining)} remaining</span>
+    </div>
+  `;
+}
+
+function metricBox(label, value) {
+  return `
+    <div class="metric">
+      <span class="label">${label}</span>
+      <strong>${value}</strong>
+    </div>
+  `;
+}
+
+function settingRow(label, value, badge) {
+  return `
+    <div class="detail-row">
+      <div>
+        <p class="row-title">${label}</p>
+        <p class="row-subtitle">${value}</p>
+      </div>
+      <span class="switch-pill">${badge}</span>
+    </div>
+  `;
+}
+
+function ruleRow(rule, category) {
+  return `
+    <div class="category-row">
+      <span>${rule}</span>
+      <strong>${category}</strong>
+    </div>
+  `;
+}
+
+function readonlyField(label, value) {
+  return `
+    <div class="field">
+      <label>${label}</label>
+      <input type="text" value="${value}" readonly />
+    </div>
+  `;
+}
+
+function manualInputField(name, label, value, type = "text") {
+  return `
+    <div class="field">
+      <label for="manual-${name}">${label}</label>
+      <input id="manual-${name}" type="${type}" value="${value || ""}" data-manual-input="${name}" />
+    </div>
+  `;
+}
+
 function detailRow(label, value) {
   return `
     <div class="detail-row">
@@ -574,6 +1035,13 @@ function render() {
     saved: savedScreen,
     cancelled: cancelledScreen,
     transactions: transactionsScreen,
+    reports: reportsScreen,
+    budgets: budgetsScreen,
+    "categories-management": categoriesManagementScreen,
+    settings: settingsScreen,
+    "transaction-detail": transactionDetailScreen,
+    "manual-expense": manualExpenseScreen,
+    "import-statement": importStatementScreen,
   };
 
   app.innerHTML = screens[state.screen]();
@@ -588,6 +1056,12 @@ app.addEventListener("click", (event) => {
 
   if (target.dataset.screen) {
     setScreen(target.dataset.screen);
+    return;
+  }
+
+  if (target.dataset.transactionId) {
+    state.selectedTransactionId = target.dataset.transactionId;
+    setScreen("transaction-detail");
     return;
   }
 
@@ -614,6 +1088,24 @@ app.addEventListener("click", (event) => {
     return;
   }
 
+  if (target.dataset.manualCategory) {
+    state.manualExpense = {
+      ...state.manualExpense,
+      category: target.dataset.manualCategory,
+    };
+    render();
+    return;
+  }
+
+  if (target.dataset.manualMethod) {
+    state.manualExpense = {
+      ...state.manualExpense,
+      paymentMethod: target.dataset.manualMethod,
+    };
+    render();
+    return;
+  }
+
   const actions = {
     back: () => setScreen("home"),
     "clear-filters": () => {
@@ -625,6 +1117,38 @@ app.addEventListener("click", (event) => {
         search: "",
       };
       render();
+    },
+    "mark-selected-paid": () => {
+      state.transactions = state.transactions.map((item) =>
+        item.id === state.selectedTransactionId
+          ? { ...item, status: "Paid", time: "Just now", date: "Today" }
+          : item,
+      );
+      render();
+    },
+    "save-manual-expense": () => {
+      const draft = state.manualExpense;
+      const amount = Number(draft.amount || 0);
+
+      if (amount <= 0) {
+        return;
+      }
+
+      const transaction = {
+        id: `manual-${Date.now()}`,
+        merchant: draft.merchant || "Manual expense",
+        category: draft.category,
+        amount,
+        app: draft.paymentMethod,
+        time: "Just now",
+        date: "Today",
+        status: "Paid",
+        note: draft.note || "Manual entry",
+      };
+
+      state.transactions = [transaction, ...state.transactions];
+      state.selectedTransactionId = transaction.id;
+      setScreen("transaction-detail");
     },
     "manual-upi": () =>
       updateTransaction({
@@ -656,6 +1180,16 @@ app.addEventListener("click", (event) => {
 });
 
 app.addEventListener("input", (event) => {
+  const manualInput = event.target.dataset.manualInput;
+
+  if (manualInput) {
+    state.manualExpense = {
+      ...state.manualExpense,
+      [manualInput]: event.target.value,
+    };
+    return;
+  }
+
   const filterInput = event.target.dataset.filterInput;
 
   if (filterInput) {
