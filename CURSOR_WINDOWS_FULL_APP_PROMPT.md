@@ -25,10 +25,13 @@ Recommended stack:
 - React Native with Expo
 - TypeScript
 - Expo Router or React Navigation
-- Local persistent storage using SQLite or AsyncStorage
+- Version 1 local storage using AsyncStorage or Expo SecureStore/AsyncStorage
+  style key-value persistence
 - Expo Camera for UPI QR scanning
 - Expo Linking / Android intents for opening UPI payment screens
 - Keep UI mobile-first and close to the existing prototype design
+- Do not implement SQLite in version 1. Keep the storage service clean so SQLite
+  can replace local key-value storage later.
 
 Important product flow:
 1. User opens HEMS.
@@ -262,10 +265,27 @@ UPI deep link generation:
   upi://pay?pa=dmart-store%40upi&pn=DMart&am=850&cu=INR&tn=Grocery
 
 Persistence:
-- Store all transactions, categories, budgets, and settings locally.
+- Version 1 should use local key-value storage, not SQLite.
+- Store transactions, categories, budgets, and settings as JSON in local storage.
+- Suggested keys:
+  - hems.transactions
+  - hems.categories
+  - hems.budgets
+  - hems.settings
 - Data must remain after app restart.
 - Seed default categories on first launch.
 - Seed demo transactions only in development/demo mode.
+- Create a storage service abstraction so screens do not directly call
+  AsyncStorage. Later, this storage service can be migrated to SQLite without
+  rewriting the screens.
+- Add export/backup support before relying on the app for real long-term data.
+
+Future SQLite migration:
+- Do not build this in version 1.
+- Plan SQLite as version 2 when transaction volume grows and reporting/filtering
+  needs become heavier.
+- Keep the data models stable so local JSON records can be migrated into SQLite
+  tables later.
 
 UI requirements:
 - Use the current prototype as visual reference.
